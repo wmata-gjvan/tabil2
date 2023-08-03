@@ -32,8 +32,9 @@ function createFile() {
 
 function start() {  
     var request = "./begin";
-    req.open("GET", request, true);
-    req.addEventListener("loadend", window.close());
+    req.open("GET", request, false);
+    req.send()
+    window.close()
 }
 function loadEnd(e) {
    document.body.innerHTML = '<h2>Config file has been created sucessfully. Click Begin to start using the TABIL</h2><button type="button" onclick="start()">Begin!</button>'
