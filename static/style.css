@@ -1,0 +1,72 @@
+body {
+    background-color: lightblue;
+  }
+  
+  h1 {
+    color: black;
+  }
+
+  filter {
+    border: 2px solid black;
+    font-size:medium;
+  }
+
+  .scrollbox {
+    overflow: auto;
+    border: 0px;
+    border-radius:15%;
+    font:16px/26px Georgia, Garamond, Serif;
+    width: fit-content;
+    height: 200px;
+  }
+  label {
+    font-family: 'Times New Roman', Times, serif;
+    font-size:large;
+  }
+  .train {
+    border: 5px;
+    border-radius: 0%;
+    border-color: black;
+    border-style: solid;
+    width: 900px;
+    background-color: white;
+    font-family: 'Times New Roman', Times, serif;
+    font-size:large;
+    padding: 10px;
+    padding-left: 15px;
+    margin-top: 10px;
+    position: relative;
+  }
+  .stats {
+    border: 5px;
+    border-radius: 0%;
+    border-color: black;
+    border-style: solid;
+    width: 450px;
+    background-color: lightblue;
+    font-family: 'Times New Roman', Times, serif;
+    font-size:large;
+    padding: 10px;
+    padding-left: 15px;
+    margin-top: 10px;
+    position: absolute;
+    top:20px;
+    right:50px;
+  }
+  .smallinput {
+    width: 55px;
+  }
+  .rect {
+    position:absolute;
+    top: 0px;
+    left: 0px;
+    height: 100%;
+    width: 10px;
+    background: rgb(186, 7, 202);
+  }
+  button {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: large;
+    margin-top: 10px;
+  }
+

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>TABIL Setup</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="icon" href="static/favicon.ico" type="image/x-icon">
+  </head>
+  <body onload="onload()">
+    <h1>Initial setup for TABIL:</h1>  
+    
+    <div class="filter", id="filterbox">
+        <label for="stationID">Station ID: </label>
+        <select name="stationID" id="stationID">
+          
+       </select>
+          <label for="bufferTime">Buffer Time: </label>
+          <input type="text" id="bufferTime" name="bufferTime" class="smallinput" placeholder="Seconds">
+        
+          <label for="arrCountdown">Arrival Countdown: </label>
+          <input type="text" id="arrCountdown" name="arrCountdown" class="smallinput" placeholder="Seconds">
+          <label for="platformCountdown">Platform Countdown:</label>
+          <input type="text" id="platformCountdown" name="platformCountdown" class="smallinput" placeholder="Seconds">
+          <br>
+          <button type="button" onclick="createFile()">Generate</button>
+
+    </div>
+   
+	<script src="static/index.js"></script>
+</html>
