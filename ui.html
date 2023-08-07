@@ -21,19 +21,17 @@
       color: #000; /* Heading text color set to black */
     }
 
-    .filter {
-      display: inline-block;
-      text-align: left;
-      padding: 10px;
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
       border: 1px solid #ccc;
       border-radius: 8px;
-      margin: 20px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
       background-color: #f6f6f6;
     }
 
     .styled-input {
-      display: inline-block;
       text-align: left;
       margin: 10px;
     }
@@ -50,9 +48,6 @@
       border: 1px solid #00a5df; /* Metro's blue branding color */
       border-radius: 4px;
       width: 120px;
-    }
-
-    .styled-input select {
       background-color: #f6f6f6;
     }
 
@@ -75,7 +70,6 @@
     }
 
     .time-selection {
-      display: inline-block;
       text-align: left;
       margin: 10px;
     }
@@ -86,10 +80,11 @@
       color: #555;
     }
 
-    .time-selection input[type="time"] {
+    .time-selection input[type="text"] {
       padding: 8px;
       border: 1px solid #00a5df;
       border-radius: 4px;
+      background-color: #f6f6f6;
     }
 
     .instructions {
@@ -116,7 +111,7 @@
 <body onload="onload()">
   <h1>TABIL 2.0 Initial Setup Wizard</h1>
 
-  <div class="filter" id="filterbox">
+  <div class="container">
     <div class="styled-input">
       <label for="stationID">Station ID:</label>
       <select name="stationID" id="stationID">
@@ -141,37 +136,39 @@
 
     <div class="time-selection">
       <label>Weekday Time Selection:</label>
-      <div class="time-selection-flex">
-        <label for="weekdayTimeRange1">Weekdays (Range 1):</label>
-        <input type="time" id="weekdayTimeRange1Start" name="weekdayTimeRange1Start">
+      <div class="styled-input">
+        <label for="weekdayTimeRange1">Weekday Time Range 1:</label>
+        <input type="text" id="weekdaystart1" name="weekdaystart1" placeholder="Hour (0-23)">
         <span>to</span>
-        <input type="time" id="weekdayTimeRange1End" name="weekdayTimeRange1End">
+        <input type="text" id="weekdayend1" name="weekdayend1" placeholder="Hour (0-23)">
       </div>
 
-      <div class="time-selection-flex">
-        <label for="weekdayTimeRange2">Weekdays (Range 2):</label>
-        <input type="time" id="weekdayTimeRange2Start" name="weekdayTimeRange2Start">
+      <div class="styled-input">
+        <label for="weekdayTimeRange1">Weekday Time Range 2:</label>
+        <input type="text" id="weekdaystart2" name="weekdaystart2" placeholder="Hour (0-23)">
         <span>to</span>
-        <input type="time" id="weekdayTimeRange2End" name="weekdayTimeRange2End">
+        <input type="text" id="weekdayend2" name="weekdayend2" placeholder="Hour (0-23)">
       </div>
     </div>
 
     <div class="time-selection">
       <label>Weekend Time Selection:</label>
-      <div class="time-selection-flex">
-        <label for="weekendTimeRange1">Weekend (Range 1):</label>
-        <input type="time" id="weekendTimeRange1Start" name="weekendTimeRange1Start">
+      <div class="styled-input">
+        <label for="weekendTimeRange1">Weekend Time Range 1:</label>
+        <input type="text" id="weekendstart1" name="weekendstart1" placeholder="Hour (0-23)">
         <span>to</span>
-        <input type="time" id="weekendTimeRange1End" name="weekendTimeRange1End">
+        <input type="text" id="weekendend1" name="weekendend1" placeholder="Hour (0-23)">
       </div>
 
-      <div class="time-selection-flex">
-        <label for="weekendTimeRange2">Weekend (Range 2):</label>
-        <input type="time" id="weekendTimeRange2Start" name="weekendTimeRange2Start">
+      <div class="styled-input">
+        <label for="weekdayTimeRange1">Weekend Time Range 2:</label>
+        <input type="text" id="weekendstart2" name="weekendstart2" placeholder="Hour (0-23)">
         <span>to</span>
-        <input type="time" id="weekendTimeRange2End" name="weekendTimeRange2End">
+        <input type="text" id="weekendend2" name="weekendend2" placeholder="Hour (0-23)">
       </div>
     </div>
+
+    <br />
 
     <div class="styled-input">
       <input type="checkbox" id="verifyRevenueTrainIDs" name="verifyRevenueTrainIDs">
@@ -187,11 +184,19 @@
   <div class="instructions">
     <h2>Instructions:</h2>
     <p>
-      Please fill out the form with the required information for TABIL 2.0 setup.
-      Select your desired Station ID, Buffer Time, Arrival Countdown, and Platform Countdown values.
-      You can also specify two separate time ranges for both weekdays and weekends.
-      Check the "Verify revenue train IDs" checkbox if you want to enable revenue train ID verification.
-      Click the "Generate" button to generate the setup file.
+      This is the initial setup wizard for the Train Approach Bus Indicator Light (TABIL) 2.0. The HTML form on this page
+      will generate a configuration file that will be stored in the 'folder' with the other files used to run the script.
+      To properly set up TABIL 2.0, ensure that the track circuit IDs for your station are in the 'track-circuits.csv' file.
+      Then, fill in the desired values for the following:
+    </p>
+    <ul>
+      <li>Minimum Time Between Activations (how long before the light is allowed to turn on after turning off)</li>
+      <li>Arrival Countdown (Countdown timer value in seconds once the train occupies the selected approach circuit)</li>
+      <li>Platform Countdown (Countdown timer value in seconds once the train occupies the selected platform circuit)</li>
+      <li>The weekday and weekend time ranges (times during the day when the TABIL will be active, must be entered in whole numbers between 0 and 23)</li>
+    </ul>
+    <p>
+      Click the "Generate" button to create the setup file.
     </p>
   </div>
 
