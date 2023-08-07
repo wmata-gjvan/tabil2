@@ -19,8 +19,6 @@ for row in csv.reader(open("Track Circuits.csv")):
         continue
     listOfOptions.append(row)
     i+=1
-if __name__ == '__main__':
-    app.run(debug=True, port=8001)
 #Flask web application routes
 @app.route("/")
 def home():
@@ -43,4 +41,4 @@ def begin():
     os.system("python tabil2.py")
     return "hello" & exit()
 
-webbrowser.open('http://127.0.0.1:8001')
+webbrowser.open('http://0.0.0.0:4000')

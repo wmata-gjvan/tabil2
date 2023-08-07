@@ -14,7 +14,7 @@ import RPi.GPIO as GPIO
 if not os.path.exists("config.json"):
     print("No config file found. Starting out of box experience...")
     print("Goodbye!")
-    os.system("python -m flask run")
+    os.system("python -m flask run --host=0.0.0.0 --port=4000")
     exit()
 #No -> Launch UI to decide location
 #Set station code and track circuit IDs. Buffer time (naptime). Arrival countdown & Platform Countdown.
