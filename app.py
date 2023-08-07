@@ -22,7 +22,7 @@ for row in csv.reader(open("Track Circuits.csv")):
 #Flask web application routes
 @app.route("/")
 def home():
-    return open('ui.html')
+    return open('ui.html').read()
 @app.route("/getOptions")
 def getOptions():
     return json.dumps([row[0] for row in listOfOptions])
