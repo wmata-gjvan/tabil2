@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[35]:
-
-
-
-
-import requests
-import json
 import os.path
 import csv
+import datetime
+import time
+import requests
+import json
+import math
+import threading
+import RPi.GPIO as GPIO
 
 #Does config file exist?
 if not os.path.exists("config.json"):
@@ -22,6 +21,25 @@ if not os.path.exists("config.json"):
 #Yes -> Proceed Headless
 
 #Different time periods per day
+def is_allowed_time():
+    # Get the current date and time
+    now = datetime.datetime.now()
+
+    # Get the day of the week (0 = Monday, 6 = Sunday)
+    day_of_week = now.weekday()
+
+    # Get the current hour (24-hour format)
+    current_hour = now.hour
+
+    # Define allowed hours for weekdays and weekends
+    weekdays_allowed_hours = (11, 14, 19, 23)  #format is start time,end time, start time, end time 
+    weekends_allowed_hours = (5, 9, 12, 23)  
+
+    if day_of_week < 5:  # Weekdays (0 to 4)
+        return weekdays_allowed_hours[0] <= current_hour < weekdays_allowed_hours[1] or weekdays_allowed_hours[2] <= current_hour < weekdays_allowed_hours[3]
+    else:  # Weekends (5 and 6)
+        return weekends_allowed_hours[0] <= current_hour < weekends_allowed_hours[1] or weekends_allowed_hours[2] <= current_hour < weekends_allowed_hours[3]
+
 
 api_key = '38142ab0581f40d0ae102dfea30da93b'  # Replace with your actual API key
 headers = {'api_key': api_key}
@@ -41,6 +59,17 @@ for row in csv.reader(open("Track Circuits.csv")):
         # circuit_ida is the id for the arrival circuit*
         circuit_ida1 = row[4]
         circuit_ida2 = row[5]
+        #start/end times for program to run
+        start_time_weekday_1 = row[6]
+        end_time_weekday_1 = row[7]
+        start_time_weekday_2 = row[8]
+        end_time_weekday_2 = row[9]
+        start_time_weekend_1 = row[10]
+        end_time_weekend_1 = row[11]
+        start_time_weekend_2 = row[12]
+        end_time_weekend_2 = row[13]
+        #check revenue ID flag
+        revenue_check = row[14]
 
 # consts in the program that are vars for ease of access
 # arrival_countdown starts at the farther track circuit, platform_countdown starts at the platform
@@ -78,25 +107,10 @@ if trains:
 # In[28]:
 
 
-# the imports are IMPORTant :)
-import time
-import requests
-import json
-import math
-import threading
-#import RPi.GPIO as GPIO
-
-
-# In[5]:
-
 
 # api key, kind of important
 api_key = '38142ab0581f40d0ae102dfea30da93b'
 headers = {'api_key': api_key}
-
-
-# In[6]:
-
 
 # function to get the positions of all the trains in the system
 def get_train_positions():
@@ -109,11 +123,7 @@ def get_train_positions():
     else:
         print('Error fetching data: ', response.status_code)
         return None
-
-
-# In[7]:
-
-
+    
 # function that uses train positions (see above) to check if a train is on a specified circuit
 def find_trains_on_circuit(circuit_id):
     train_positions = get_train_positions()
@@ -125,9 +135,6 @@ def find_trains_on_circuit(circuit_id):
         return None
 
 
-# In[8]:
-
-
 # function that checks if a trainID matches any train in a list of trains
 def is_train_gone(train_id, train_list):
     for train in train_list:
@@ -136,13 +143,6 @@ def is_train_gone(train_id, train_list):
     
     return True
 
-
-
-
-
-# In[34]:
-
-
 # countdown and countdown2 mark the duration of the flashing light, countdown2 will never exceed 5 mins
 countdown = 0
 countdown2 = 0
@@ -150,8 +150,6 @@ countdown2 = 0
 active_cd = False
 # active_cd is a redundancy for cooldown so we can guarantee it stops when it reaches 0
 active_cd2 = False
-
-
 
 # light_flag is the variable that will trigger the external light (hardware)
 light_flag = 0
@@ -169,15 +167,15 @@ newtrain = False
 seconds = 600
 
 # raspberry pi stuff
-"""
+
 #set up GPIO
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(11, GPIO.OUT)
-"""
+
 def check_light_flag():
     global light_flag
     # essentially with multithreading, as long as countdown > 0, this will turn the light on and off
-    """
+    
     while seconds > 0:
         if light_flag == 1:
             GPIO.output(11, GPIO.HIGH)
@@ -186,7 +184,7 @@ def check_light_flag():
             time.sleep(0.5)
         else:
             time.sleep(1)
-            """
+            
     
 
 # Create and start a new thread that will run the check_light_flag function
@@ -195,202 +193,150 @@ flag_thread.start()
 
 # the program will run forever so this code is in a while loop
 """ should make into function later """
-while seconds > 0:
-    # we need to catch the timing of the program to make sure it runs every second
-    start_time = time.time()
-    # if the countdown is negative, we set it to 0 (shouldn't be negative) and if countdown <=0 the light is off (0)
-    if countdown <= 0:
-        countdown = 0
-        light_flag = 0
-    else:
-        # if the countdown is positive, the light should be active (refer to check_light_flag thread)
-        light_flag = 1
-        
-    #print(f'start for loop light flag: {light_flag}')
-        
-    # then we fetch the status of the circuits (see if they are occupied)
-    # the arrivals and platform variables are lists of trains
-    start_internet = time.time()
-    arrivals1 = find_trains_on_circuit(circuit_ida1)
-    arrivals2 = find_trains_on_circuit(circuit_ida2)
-    platform1 = find_trains_on_circuit(circuit_id1)
-    platform2 = find_trains_on_circuit(circuit_id2)
-    end_internet = time.time()
-    #print(f"internet connection speed: {end_internet - start_internet}")
-    #print(arrivals1)
-    #print(arrivals2)
-    #print(platform1)
-    #print(platform2)
-    
-    
-    # checking if there are any new revenue trains on arrival and adding their IDs to a list
-    for train in arrivals1:
-        if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in arr_list):
-            #print(f"new train - arrivals 1, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-            arr_list.append(train['TrainId'])
-            newtrain = True
-                
-                
-    for train in arrivals2:
-        if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in arr_list):
-            #print(f"new train - arrivals 2, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-            arr_list.append(train['TrainId'])
-            newtrain = True
-                
-    
-    # a new train on arrival means the countdown is set to 5 minutes & newtrain var is reset
-    # if the countdown already went through the buffer, we set the max cooldown as well (cooldown2)
-    # cooldowns then become active
-    if newtrain and countdown <= 0:
-        countdown = arrival_countdown
-        active_cd = True
-        countdown2 = arrival_countdown
-        active_cd2 = True
-        newtrain = False
-    elif newtrain:
-        countdown = arrival_countdown
-        active_cd = True
-        newtrain = False
-        
-    # checking if there are any new revenue trains *at platform* and adding their IDs to a list
-    for train in platform1:
-        if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in brd_list):
-            #print(f"new train - platform 1, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-            brd_list.append(train['TrainId'])
-            newtrain = True
-            #print(train['TrainId'])
-                
-    for train in platform2:
-        if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in brd_list):
-            #print(f"new train - platform 2, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-            newtrain = True
-            brd_list.append(train['TrainId'])
-            #print(train['TrainId'])
-                
-    # a new train at platform means the countdown is reset to 3 minutes & newtrain var is reset
-    # if the countdown already went through the buffer, we set the max cooldown as well (cooldown2)
-    # cooldowns then become active
-    if newtrain and countdown <= 0:
-        countdown = platform_countdown
-        active_cd = True
-        countdown2 = arrival_countdown
-        active_cd2 = True
-        newtrain = False
-    elif newtrain:
-        #print("new train on brd")
-        countdown = platform_countdown
-        newtrain = False
-        active_cd = True
+while True: 
 
+    while is_allowed_time(): #runs if the time of day is right 
+        # we need to catch the timing of the program to make sure it runs every second
+        start_time = time.time()
+        # if the countdown is negative, we set it to 0 (shouldn't be negative) and if countdown <=0 the light is off (0)
+        if countdown <= 0:
+            countdown = 0
+            light_flag = 0
+        else:
+            # if the countdown is positive, the light should be active (refer to check_light_flag thread)
+            light_flag = 1
+            
+        print(f'start for loop light flag: {light_flag}')
+            
+        # then we fetch the status of the circuits (see if they are occupied)
+        # the arrivals and platform variables are lists of trains
+        start_internet = time.time()
+        arrivals1 = find_trains_on_circuit(circuit_ida1)
+        arrivals2 = find_trains_on_circuit(circuit_ida2)
+        platform1 = find_trains_on_circuit(circuit_id1)
+        platform2 = find_trains_on_circuit(circuit_id2)
+        end_internet = time.time()
+        print(f"internet connection speed: {end_internet - start_internet}")
+        print(arrivals1)
+        print(arrivals2)
+        print(platform1)
+        print(platform2)
         
-    # checks if the trains have left any of the circuits - if so, removes their ID's from corresponding ID lists
-    for train_id in arr_list:
-        bool1 = is_train_gone(train_id, arrivals1)
-        bool2 = is_train_gone(train_id, arrivals2)
-        if bool1 and bool2:
-            del arr_list[arr_list.index(train_id)]
-            #print("train removed from arr")
-    for train_id in brd_list:
-        bool1 = is_train_gone(train_id, platform1)
-        bool2 = is_train_gone(train_id, platform2)
-        if bool1 and bool2:
-            del brd_list[brd_list.index(train_id)]
-            #print("train removed from brd")
-     
-    #print("countdown: ", countdown)
-    #print("countdown2: ", countdown2)
-    # decrease in countdown and (temp var) seconds, waits 1 second
+        
+        # checking if there are any new revenue trains on arrival and adding their IDs to a list
+        for train in arrivals1:
+            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in arr_list):
+                print(f"new train - arrivals 1, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
+                arr_list.append(train['TrainId'])
+                newtrain = True
+                    
+                    
+        for train in arrivals2:
+            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in arr_list):
+                print(f"new train - arrivals 2, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
+                arr_list.append(train['TrainId'])
+                newtrain = True
+                    
+        
+        # a new train on arrival means the countdown is set to 5 minutes & newtrain var is reset
+        # if the countdown already went through the buffer, we set the max cooldown as well (cooldown2)
+        # cooldowns then become active
+        if newtrain and countdown <= 0:
+            countdown = arrival_countdown
+            active_cd = True
+            countdown2 = arrival_countdown
+            active_cd2 = True
+            newtrain = False
+        elif newtrain:
+            countdown = arrival_countdown
+            active_cd = True
+            newtrain = False
+            
+        # checking if there are any new revenue trains *at platform* and adding their IDs to a list
+        for train in platform1:
+            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in brd_list):
+                print(f"new train - platform 1, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
+                brd_list.append(train['TrainId'])
+                newtrain = True
+                print(train['TrainId'])
+                    
+        for train in platform2:
+            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in brd_list):
+                print(f"new train - platform 2, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
+                newtrain = True
+                brd_list.append(train['TrainId'])
+                print(train['TrainId'])
+                    
+        # a new train at platform means the countdown is reset to 3 minutes & newtrain var is reset
+        # if the countdown already went through the buffer, we set the max cooldown as well (cooldown2)
+        # cooldowns then become active
+        if newtrain and countdown <= 0:
+            countdown = platform_countdown
+            active_cd = True
+            countdown2 = arrival_countdown
+            active_cd2 = True
+            newtrain = False
+        elif newtrain:
+            print("new train on brd")
+            countdown = platform_countdown
+            newtrain = False
+            active_cd = True
+
+            
+        # checks if the trains have left any of the circuits - if so, removes their ID's from corresponding ID lists
+        for train_id in arr_list:
+            bool1 = is_train_gone(train_id, arrivals1)
+            bool2 = is_train_gone(train_id, arrivals2)
+            if bool1 and bool2:
+                del arr_list[arr_list.index(train_id)]
+                print("train removed from arr")
+        for train_id in brd_list:
+            bool1 = is_train_gone(train_id, platform1)
+            bool2 = is_train_gone(train_id, platform2)
+            if bool1 and bool2:
+                del brd_list[brd_list.index(train_id)]
+                print("train removed from brd")
+        
+        print("countdown: ", countdown)
+        print("countdown2: ", countdown2)
+        # decrease in countdown and (temp var) seconds, waits 1 second
+        
+        # gets the runtime of the program, so we advance in seconds and not partial seconds
+        end_time = time.time()
+        run_time = end_time - start_time
+        print(run_time)
+        
+        # to keep even seconds, we sleep for the runtime rounded up
+        sleep = math.ceil(run_time)
+        time.sleep(sleep - run_time)
+        countdown = countdown - sleep
+        
+        # master countdown doesn't decrease if it's already at (or below) zero
+        if countdown2 < 0:
+            countdown2 = 0
+        else:
+            countdown2 = countdown2 - sleep
     
-    # gets the runtime of the program, so we advance in seconds and not partial seconds
-    end_time = time.time()
-    run_time = end_time - start_time
-    #print(run_time)
-    
-    # to keep even seconds, we sleep for the runtime rounded up
-    sleep = math.ceil(run_time)
-    time.sleep(sleep - run_time)
-    countdown = countdown - sleep
-    seconds = seconds - sleep
-    
-    # master countdown doesn't decrease if it's already at (or below) zero
-    if countdown2 < 0:
-        countdown2 = 0
-    else:
-        countdown2 = countdown2 - sleep
- 
-    # the countdown will never exceed countdown2 seconds
-    if countdown2 < 1 and active_cd2:
-        active_cd2 = False
-        active_cd = False
-        countdown = 0
-        countdown2 = 0
-        light_flag = 0
-        #print(f'max time light flag: {light_flag}')
-        time.sleep(naptime)
-    
-    # buffer implemented after cooldown ends
-    if countdown < 1 and active_cd:
-        light_flag = 0
-        active_cd = False
-        #print(f'buffer time light flag: {light_flag}')
-        countdown = 0
-        countdown2 = 0
-        active_cd2 = False
-        time.sleep(naptime)
-    
+        # the countdown will never exceed countdown2 seconds
+        if countdown2 < 1 and active_cd2:
+            active_cd2 = False
+            active_cd = False
+            countdown = 0
+            countdown2 = 0
+            light_flag = 0
+            print(f'max time light flag: {light_flag}')
+            time.sleep(naptime)
+        
+        # buffer implemented after cooldown ends
+        if countdown < 1 and active_cd:
+            light_flag = 0
+            active_cd = False
+            print(f'buffer time light flag: {light_flag}')
+            countdown = 0
+            countdown2 = 0
+            active_cd2 = False
+            time.sleep(naptime)
+        
 flag_thread.join()
     
-
-
-# In[85]:
-
-
-# old code
-"""
-# countdown > 0 => the light is flashing
-countdown = 0
-# seconds is the length of the program rn
-seconds = 30
-
-# while loop to make the program run for seconds seconds
-# might want to make this into a function later
-while seconds > 0:
-    # if the countdown is negative, we set it to 0 (shouldn't be negative)
-    if countdown < 0:
-        countdown = 0
-        
-    # then we fetch the status of the circuits (see if they are occupied)
-    # the arrivals and platform variables are lists of trains
-    arrivals1 = find_trains_on_circuit(circuit_ida1)
-    arrivals2 = find_trains_on_circuit(circuit_ida2)
-    platform1 = find_trains_on_circuit(circuit_id1)
-    platform2 = find_trains_on_circuit(circuit_id2)
-    
-    # if there are any trains on the arrival circuits and the countdown hasn't started, 5 min ctdwn
-    if (len(arrivals1) > 0 or len(arrivals2) > 0) and countdown == 0:
-        #start timer
-        countdown = 300
-    elif countdown < 180 and (len(platform1) > 0 or len(platform2) > 0):
-        countdown = 180
-
-    # random print statements - will be removed later - useful for testing
-    if platform1:
-        for train in platform1:
-            print(f"Train {train['TrainNumber']} is on circuit {circuit_id1}.")
-            print(f"train has been on platform for: {train['SecondsAtLocation']} seconds {circuit_id1}.")
-
-    if platform2:
-        for train in platform2:
-            print(f"Train {train['TrainNumber']} is on circuit {circuit_id2}.")
-            print(f"train has been on platform for: {train['SecondsAtLocation']} seconds {circuit_id2}.")
-    countdown = countdown - 1
-    time.sleep(1)
-    seconds = seconds - 1
-"""
-
-
-# In[19]:
-
-
-print("hello")
 
