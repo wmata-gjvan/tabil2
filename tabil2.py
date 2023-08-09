@@ -32,8 +32,7 @@ def is_allowed_time():
     current_hour = now.hour
 
     # Define allowed hours for weekdays and weekends
-    weekdays_allowed_hours = (11, 14, 19, 23)  #format is start time,end time, start time, end time 
-    weekends_allowed_hours = (5, 9, 12, 23)  
+
 
     if day_of_week < 5:  # Weekdays (0 to 4)
         return weekdays_allowed_hours[0] <= current_hour < weekdays_allowed_hours[1] or weekdays_allowed_hours[2] <= current_hour < weekdays_allowed_hours[3]
@@ -54,32 +53,54 @@ station_code = settings['station']
 for row in csv.reader(open("Track Circuits.csv")):
     if row[0] == station_code:
         # circuit_id is the id for the track circuit at the platform
-        circuit_id1 = row[2]
-        circuit_id2 = row[3]
+        circuit_id1 = int(row[2])
+        circuit_id2 = int(row[3])
         # circuit_ida is the id for the arrival circuit*
-        circuit_ida1 = row[4]
-        circuit_ida2 = row[5]
+        circuit_ida1 = int(row[4])
+        circuit_ida2 = int(row[5])
         #start/end times for program to run
-        start_time_weekday_1 = row[6]
-        end_time_weekday_1 = row[7]
-        start_time_weekday_2 = row[8]
-        end_time_weekday_2 = row[9]
-        start_time_weekend_1 = row[10]
-        end_time_weekend_1 = row[11]
-        start_time_weekend_2 = row[12]
-        end_time_weekend_2 = row[13]
-        #check revenue ID flag
-        revenue_check = row[14]
+        print(circuit_id1)
+        print(circuit_id2)
+        print(circuit_ida1)
+        print(circuit_ida2)
+        time.sleep(10)
+        
 
 # consts in the program that are vars for ease of access
 # arrival_countdown starts at the farther track circuit, platform_countdown starts at the platform
-arrival_countdown = settings['arrivalCountdown']
+arrival_countdown = int(settings['arrivalCountdown'])
 
-platform_countdown = settings['platformCountdown']
+platform_countdown = int(settings['platformCountdown'])
+
 
 # naptime is the minimum time the light must be off after cooldown < 0 or cooldown2 < 0
-naptime = settings['bufferTime']
+naptime = int(settings['bufferTime'])
+start_time_weekday_1 =int( settings['weekdaystart1'])
+end_time_weekday_1 = int(settings['weekdayend1'])
+start_time_weekday_2 = int(settings['weekdaystart2'])
+end_time_weekday_2 = int(settings['weekdayend2'])
+start_time_weekend_1 = int(settings['weekendstart1'])
+end_time_weekend_1 = int(settings['weekendend1'])
+start_time_weekend_2 = int(settings['weekendstart2'])
+end_time_weekend_2 = int(settings['weekendend2'])
 
+def is_allowed_time():
+    # Get the current date and time
+    now = datetime.datetime.now()
+
+    # Get the day of the week (0 = Monday, 6 = Sunday)
+    day_of_week = now.weekday()
+
+    # Get the current hour (24-hour format)
+    current_hour = now.hour
+
+    # Define allowed hours for weekdays and weekends
+
+
+    if day_of_week < 5:  # Weekdays (0 to 4)
+        return start_time_weekday_1 <= current_hour < end_time_weekday_1 or start_time_weekday_2 <= current_hour < end_time_weekday_2
+    else:  # Weekends (5 and 6)
+        return start_time_weekend_1 <= current_hour < end_time_weekend_1 or start_time_weekend_2 <= current_hour < end_time_weekend_2
 
 def get_train_predictions(station_code):
     base_url = 'https://api.wmata.com/StationPrediction.svc/json/GetPrediction/'
@@ -93,17 +114,6 @@ def get_train_predictions(station_code):
     else:
         print('Error fetching data: ', response.status_code)
         return None
-
-
-
-trains = get_train_predictions(station_code)
-
-if trains:
-    for train in trains:
-        print(f"Train to {train['DestinationName']} is {train['Min']} minutes away.")
-        
-
-
 # In[28]:
 
 
@@ -191,6 +201,7 @@ def check_light_flag():
 flag_thread = threading.Thread(target=check_light_flag)
 flag_thread.start()
 
+print(is_allowed_time())
 # the program will run forever so this code is in a while loop
 """ should make into function later """
 while True: 
@@ -198,17 +209,16 @@ while True:
     while is_allowed_time(): #runs if the time of day is right 
         # we need to catch the timing of the program to make sure it runs every second
         start_time = time.time()
-        # if the countdown is negative, we set it to 0 (shouldn't be negative) and if countdown <=0 the light is off (0)
+        # if the countdown is negative, we set it to 0 (shouldn't be negative)
         if countdown <= 0:
             countdown = 0
             light_flag = 0
         else:
-            # if the countdown is positive, the light should be active (refer to check_light_flag thread)
             light_flag = 1
             
         print(f'start for loop light flag: {light_flag}')
             
-        # then we fetch the status of the circuits (see if they are occupied)
+            # then we fetch the status of the circuits (see if they are occupied)
         # the arrivals and platform variables are lists of trains
         start_internet = time.time()
         arrivals1 = find_trains_on_circuit(circuit_ida1)
@@ -222,65 +232,58 @@ while True:
         print(platform1)
         print(platform2)
         
-        
-        # checking if there are any new revenue trains on arrival and adding their IDs to a list
+        # checking if there are any new revenue trains and adding their IDs to a list
         for train in arrivals1:
-            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in arr_list):
+            if not(train['TrainId'] in arr_list):
                 print(f"new train - arrivals 1, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-                arr_list.append(train['TrainId'])
-                newtrain = True
-                    
+                if train['ServiceType'] == 'Normal':
+                    newtrain = True
+                    arr_list.append(train['TrainId'])
                     
         for train in arrivals2:
-            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in arr_list):
+            if not(train['TrainId'] in arr_list):
                 print(f"new train - arrivals 2, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-                arr_list.append(train['TrainId'])
-                newtrain = True
-                    
+                if train['ServiceType'] == 'Normal':
+                    newtrain = True
+                    arr_list.append(train['TrainId'])
         
-        # a new train on arrival means the countdown is set to 5 minutes & newtrain var is reset
-        # if the countdown already went through the buffer, we set the max cooldown as well (cooldown2)
-        # cooldowns then become active
+        # a new train on arrival means the countdown is set to 5 minutes
         if newtrain and countdown <= 0:
             countdown = arrival_countdown
-            active_cd = True
             countdown2 = arrival_countdown
             active_cd2 = True
             newtrain = False
         elif newtrain:
             countdown = arrival_countdown
-            active_cd = True
             newtrain = False
             
         # checking if there are any new revenue trains *at platform* and adding their IDs to a list
         for train in platform1:
-            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in brd_list):
+            if not(train['TrainId'] in brd_list):
                 print(f"new train - platform 1, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-                brd_list.append(train['TrainId'])
-                newtrain = True
-                print(train['TrainId'])
+                if train['ServiceType'] == 'Normal':
+                    newtrain = True
+                    brd_list.append(train['TrainId'])
+                    print(train['TrainId'])
                     
         for train in platform2:
-            if (train['ServiceType'] == 'Normal') and not(train['TrainId'] in brd_list):
+            if not(train['TrainId'] in brd_list):
                 print(f"new train - platform 2, trainID: {train['TrainId']}, trainNum: {train['TrainNumber']}")
-                newtrain = True
-                brd_list.append(train['TrainId'])
-                print(train['TrainId'])
+                if train['ServiceType'] == 'Normal':
+                    newtrain = True
+                    brd_list.append(train['TrainId'])
+                    print(train['TrainId'])
                     
-        # a new train at platform means the countdown is reset to 3 minutes & newtrain var is reset
-        # if the countdown already went through the buffer, we set the max cooldown as well (cooldown2)
-        # cooldowns then become active
+        # a new train at platform means the countdown is reset to 3 minutes
         if newtrain and countdown <= 0:
-            countdown = platform_countdown
-            active_cd = True
             countdown2 = arrival_countdown
+            countdown = platform_countdown
             active_cd2 = True
             newtrain = False
         elif newtrain:
             print("new train on brd")
             countdown = platform_countdown
             newtrain = False
-            active_cd = True
 
             
         # checks if the trains have left any of the circuits - if so, removes their ID's from corresponding ID lists
@@ -296,47 +299,42 @@ while True:
             if bool1 and bool2:
                 del brd_list[brd_list.index(train_id)]
                 print("train removed from brd")
-        
+         
         print("countdown: ", countdown)
         print("countdown2: ", countdown2)
+        
         # decrease in countdown and (temp var) seconds, waits 1 second
         
-        # gets the runtime of the program, so we advance in seconds and not partial seconds
         end_time = time.time()
         run_time = end_time - start_time
         print(run_time)
         
-        # to keep even seconds, we sleep for the runtime rounded up
         sleep = math.ceil(run_time)
-        time.sleep(sleep - run_time)
-        countdown = countdown - sleep
         
-        # master countdown doesn't decrease if it's already at (or below) zero
+        time.sleep(sleep - run_time)
+        
+        countdown = countdown - sleep
         if countdown2 < 0:
             countdown2 = 0
         else:
             countdown2 = countdown2 - sleep
-    
-        # the countdown will never exceed countdown2 seconds
+        seconds = seconds - sleep
+    # Catch-all case that ensures light doesn't flash for longer than 5 minutes
         if countdown2 < 1 and active_cd2:
             active_cd2 = False
-            active_cd = False
             countdown = 0
             countdown2 = 0
             light_flag = 0
             print(f'max time light flag: {light_flag}')
-            time.sleep(naptime)
-        
-        # buffer implemented after cooldown ends
-        if countdown < 1 and active_cd:
+            time.sleep(60)
+    # Ensure light does not re-activate within 60 seconds of turning off to allow bus operators time to notice the light has turned off
+        if countdown < 4 and countdown > 1:
             light_flag = 0
-            active_cd = False
             print(f'buffer time light flag: {light_flag}')
             countdown = 0
             countdown2 = 0
             active_cd2 = False
-            time.sleep(naptime)
-        
+            time.sleep(60)
 flag_thread.join()
     
 
